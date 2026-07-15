@@ -1,0 +1,43 @@
+appId: com.northerntech.cfengine-policy-builder
+productName: CFEngine Policy Builder
+directories:
+  buildResources: build
+  output: release
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierrc,.prettierignore}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,vitest.config.ts}'
+  - '!{.env,.env.*,.npmrc}'
+  - '!{.github,.git}'
+asarUnpack:
+  - resources/**
+# Harden the packaged binary (https://www.electronjs.org/docs/latest/tutorial/security#19-check-which-fuses-you-can-change).
+# Flipped after packaging, before signing. grantFileProtocolExtraPrivileges is
+# deliberately left at its default: the packaged renderer is loaded via file://
+# with ES-module scripts, which need those privileges.
+electronFuses:
+  runAsNode: false # ignore ELECTRON_RUN_AS_NODE (no Node-mode escape hatch)
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableCookieEncryption: true
+  onlyLoadAppFromAsar: true
+  enableEmbeddedAsarIntegrityValidation: true # enforced on macOS/Windows; no-op on Linux
+# @todo: wire macOS notarization + Windows EV signing in CI.
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - dmg
+    - zip
+win:
+  target:
+    - nsis
+linux:
+  target:
+    - AppImage
+    - deb
+    - rpm
+  category: Development
+# @todo: publish config for update.electronjs.org auto-updates.
+npmRebuild: false
