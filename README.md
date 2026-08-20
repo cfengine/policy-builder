@@ -7,18 +7,25 @@ Desktop application for building CFEngine policy.
  - React
  - TypeScript
  - MUI
+ - Python (bundled sidecar for the CFEngine toolchain)
 
 ## Requirements
 
 - Node.js 22.12+
 - npm 10+
+- uv - manages the Python sidecar and its interpreter, so no system Python is needed
 
 ## Getting started
 
 ```sh
 npm install
-npm run dev # launches Electron app
+npm run backend:sync # create python/.venv with the CFEngine toolchain
+npm run dev          # launches Electron app
 ```
+
+`npm run dev` needs the sidecar to exist, so `backend:sync` is a one-time
+prerequisite. Without it, the app runs but anything touching the backend
+reports that it cannot be found.
 
 ## Project structure
 
@@ -29,7 +36,20 @@ src/
 ├── main/      # Electron main process: window creation, ipcMain handlers
 ├── preload/   # contextBridge exposing `window.api`
 └── renderer/  # React app
+python/        # Python sidecar, packaged with PyInstaller
 ```
+
+## The Python sidecar
+
+Policy formatting, and later `cfbs` policy generation, local container testing
+and the AI backend, run in a Python process bundled with the app — see
+[python/README.md](python/README.md). Electron spawns it **once per user
+action**, writes the policy to stdin and reads the result from stdout, the same
+contract as `prettier` or `black --stdin`.
+
+`npm run backend:build` freezes it with PyInstaller into
+`python/dist/cfpb-backend/`, which `electron-builder` then ships in the app's
+resources. The `build:*` scripts do that for you.
 
 ## Scripts
 
@@ -38,15 +58,21 @@ src/
 | `npm run dev`           | Dev app with hot reload                                    |
 | `npm run build`         | Type-check then build main/preload/renderer bundles        |
 | `npm start`             | Preview the production build                               |
-| `npm run build:mac`     | Build + package a macOS app (`dmg`, `zip`)                 |
-| `npm run build:win`     | Build + package a Windows installer (`nsis`)               |
-| `npm run build:linux`   | Build + package Linux artifacts (`AppImage`, `deb`, `rpm`) |
+| `npm run build:mac`     | Build sidecar + app, package for macOS (`dmg`, `zip`)      |
+| `npm run build:win`     | Build sidecar + app, package a Windows installer (`nsis`)  |
+| `npm run build:linux`   | Build sidecar + app, package Linux (`AppImage`,`deb`,`rpm`)|
 | `npm run lint`          | ESLint (flat config)                                       |
 | `npm run format`        | Prettier write                                             |
 | `npm run typecheck`     | `tsc --noEmit` for node + web projects                     |
 | `npm test`              | Vitest unit tests (jsdom)                                  |
+| `npm run backend:sync`  | Install the sidecar's Python dependencies (uv)             |
+| `npm run backend:build` | Freeze the sidecar with PyInstaller                        |
+| `npm run backend:test`  | pytest                                                     |
+| `npm run backend:format`| Black write                                                |
+| `npm run backend:format:check` | Black check, as CI runs it                          |
 
 ## CI
 
 GitHub Actions ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs
-lint + format check, type check, and unit tests on every push and PR.
+lint + format check, type check, unit tests, and the Python backend's own lint
+and tests on every push and PR.

@@ -5,12 +5,22 @@ updates:
     schedule:
       interval: weekly
     groups:
-      minor-and-patch:
-        update-types:
-          - minor
-          - patch
+      production:
+        dependency-type: production
+      development:
+        dependency-type: development
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+
+  - package-ecosystem: uv
+    directory: /python
+    schedule:
+      interval: weekly
+    groups:
+      production:
+        dependency-type: production
+      development:
+        dependency-type: development

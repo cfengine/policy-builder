@@ -1,6 +1,9 @@
 import { BrowserWindow, app, ipcMain, nativeTheme, session, shell } from 'electron';
 import type { WebFrameMain } from 'electron';
 import { join } from 'path';
+import { pathToFileURL } from 'url';
+
+import { formatPolicy } from './backend';
 
 // electron-vite exposes the dev renderer URL via this env var; in a packaged
 // app it is absent and we load the built HTML from disk instead.
@@ -25,7 +28,11 @@ function openExternalIfSafe(url: string): void {
 function isTrustedFrame(frame: WebFrameMain | null): boolean {
   if (!frame || frame !== frame.top) return false;
   if (rendererDevUrl) return new URL(frame.url).origin === new URL(rendererDevUrl).origin;
-  return frame.url === `file://${join(__dirname, '../renderer/index.html')}`;
+  // Compare URLs, not a raw `file://${path}` string: Chromium reports frame.url
+  // percent-encoded (the install path "CFEngine Policy Builder.app" contains
+  // spaces) and Windows paths contain backslashes, so a plain string
+  // comparison never matches in a packaged build.
+  return frame.url === pathToFileURL(join(__dirname, '../renderer/index.html')).href;
 }
 
 function createWindow(): void {
@@ -83,6 +90,14 @@ app.whenReady().then(() => {
   ipcMain.handle('theme:should-use-dark', event => {
     if (!isTrustedFrame(event.senderFrame)) return false;
     return nativeTheme.shouldUseDarkColors;
+  });
+
+  ipcMain.handle('policy:format', (event, source: unknown) => {
+    if (!isTrustedFrame(event.senderFrame)) throw new Error('untrusted sender');
+    // Arguments crossing the bridge are untrusted input, even from our own
+    // renderer: check the type here rather than handing it to spawn.
+    if (typeof source !== 'string') throw new Error('policy source must be a string');
+    return formatPolicy(source);
   });
 
   createWindow();

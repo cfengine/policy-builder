@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Entitlements for the main app binary only. The PyInstaller sidecar's
+     broader grants live in entitlements.mac.inherit.plist — keeping
+     library validation enabled here means no unsigned dylib can be loaded
+     into the privileged main process. -->
+<plist version="1.0">
+  <dict>
+    <!-- Electron itself: V8 compiles JIT code at runtime. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+  </dict>
+</plist>

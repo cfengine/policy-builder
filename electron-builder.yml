@@ -11,8 +11,20 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json,vitest.config.ts}'
   - '!{.env,.env.*,.npmrc}'
   - '!{.github,.git}'
+  - '!python'
 asarUnpack:
   - resources/**
+# The PyInstaller sidecar lands in Contents/Resources/backend (macOS) or
+# resources/backend (Windows/Linux), where src/main/backend.ts looks for it.
+# Outside the asar on purpose: it is an executable spawned from disk, and
+# onedir's layout — the binary next to its _internal/ directory — must survive
+# packaging intact. Requires `npm run backend:build` first, which the
+# build:mac/win/linux scripts take care of.
+extraResources:
+  - from: python/dist/cfpb-backend
+    to: backend
+    filter:
+      - '**/*'
 # Harden the packaged binary (https://www.electronjs.org/docs/latest/tutorial/security#19-check-which-fuses-you-can-change).
 # Flipped after packaging, before signing. grantFileProtocolExtraPrivileges is
 # deliberately left at its default: the packaged renderer is loaded via file://
@@ -27,6 +39,13 @@ electronFuses:
 # @todo: wire macOS notarization + Windows EV signing in CI.
 mac:
   category: public.app-category.developer-tools
+  # Two plists on purpose: the inherit one carries the grants the frozen
+  # sidecar needs under hardened runtime (PyInstaller's bootloader sets dyld
+  # environment variables and loads unsigned dylibs from _internal/ — without
+  # them the child process is killed on launch), while the main binary keeps
+  # library validation enabled.
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.inherit.plist
   target:
     - dmg
     - zip

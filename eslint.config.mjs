@@ -3,7 +3,7 @@ import globals from 'globals';
 
 export default [
   {
-    ignores: ['out/**', 'release/**', 'dist/**', 'node_modules/**']
+    ignores: ['out/**', 'release/**', 'dist/**', 'node_modules/**', 'python/**']
   },
   ...ntReactConfig,
   {

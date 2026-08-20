@@ -48,3 +48,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test
+
+  backend:
+    name: Python backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --directory python
+      - name: Black
+        run: uv run --no-sync --directory python black --check .
+      - name: Pytest
+        run: uv run --no-sync --directory python pytest
