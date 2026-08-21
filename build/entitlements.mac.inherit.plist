@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Entitlements inherited by child/nested binaries: the Electron helpers and
+     the PyInstaller sidecar under Resources/backend. Deliberately broader
+     than entitlements.mac.plist — see there. -->
+<plist version="1.0">
+  <dict>
+    <!-- Electron helpers: V8 compiles JIT code at runtime. -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- The PyInstaller sidecar (python/). Its bootloader sets dyld search
+         paths to find the interpreter and extension modules it unpacked into
+         _internal/, and loads shared libraries that are not sealed into our
+         signature. Under hardened runtime, both are refused by default and the
+         child process dies immediately on spawn. -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+  </dict>
+</plist>
