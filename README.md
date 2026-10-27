@@ -98,4 +98,7 @@ commit is tagged `v0.2.0`, the installers for macOS (arm64 and x64), Linux and
 Windows are built and attached to the release, a draft unless publishing was
 asked for. Pushing a `v0.2.0` tag by hand does the same as a draft pre-release.
 
-The builds aren't code-signed yet; the release notes say how to open them.
+The Windows installer of a release is signed by Northern.tech AS (Azure
+Artifact Signing); its build waits for a reviewer to approve the
+`windows-signing` deployment. macOS and Linux builds aren't code-signed
+yet; the release notes say how to open them.
