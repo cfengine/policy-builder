@@ -63,6 +63,10 @@ jobs:
     name: ${{ matrix.name }}
     needs: setup
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      id-token: write
+    environment: ${{ matrix.sign && 'windows-signing' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -71,7 +75,7 @@ jobs:
           - { name: macOS arm64, runner: macos-15, target: --mac --arm64, arch: arm64, unpacked: mac-arm64/CFEngine Policy Builder.app/Contents/Resources }
           - { name: macOS x64, runner: macos-15-intel, target: --mac --x64, arch: x86_64, unpacked: mac/CFEngine Policy Builder.app/Contents/Resources }
           - { name: Linux x64, runner: ubuntu-latest, target: --linux --x64, unpacked: linux-unpacked/resources }
-          - { name: Windows x64, runner: windows-latest, target: --win --x64, unpacked: win-unpacked/resources }
+          - { name: Windows x64, runner: windows-latest, target: --win --x64, unpacked: win-unpacked/resources, sign: true }
     steps:
       - uses: actions/checkout@v7
         with:
@@ -97,17 +101,45 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y rpm
       - run: npm ci
       - run: uv sync --frozen --directory python --group build
-      # No signing certificates yet: macOS builds are signed ad hoc (Apple Silicon runs nothing
-      # unsigned), which hardened runtime would reject; Windows builds are unsigned.
+      - name: Azure login for signing
+        if: matrix.sign
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_SIGNING_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+      # No macOS signing certificate yet: macOS builds are signed ad hoc (Apple Silicon runs nothing
+      # unsigned), which hardened runtime would reject.
       - name: Package
         shell: bash
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          SIGN: ${{ matrix.sign }}
+          SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          SIGNING_PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
+          SIGNING_PUBLISHER: ${{ vars.AZURE_SIGNING_PUBLISHER }}
         run: |
-          mac=()
+          mac=() win=()
           if [ "$RUNNER_OS" = macOS ]; then mac=(-c.mac.identity=- -c.mac.hardenedRuntime=false); fi
+          if [ "$SIGN" = true ]; then
+            win=(
+              "-c.win.azureSignOptions.endpoint=$SIGNING_ENDPOINT"
+              "-c.win.azureSignOptions.codeSigningAccountName=$SIGNING_ACCOUNT"
+              "-c.win.azureSignOptions.certificateProfileName=$SIGNING_PROFILE"
+              "-c.win.azureSignOptions.publisherName=$SIGNING_PUBLISHER"
+            )
+          fi
           npm run package:prepare
-          npx electron-builder ${{ matrix.target }} --publish never "${mac[@]}"
+          npx electron-builder ${{ matrix.target }} --publish never "${mac[@]}" "${win[@]}"
+      - name: Every Windows executable is signed and timestamped
+        if: matrix.sign
+        shell: pwsh
+        run: |
+          $bad = Get-ChildItem release -Recurse -Include *.exe |
+            Get-AuthenticodeSignature |
+            Where-Object { $_.Status -ne 'Valid' -or -not $_.TimeStamperCertificate }
+          if ($bad) { $bad | Format-Table Path, Status -AutoSize; exit 1 }
       - name: The packaged sidecar runs
         shell: bash
         run: |
