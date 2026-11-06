@@ -32,7 +32,7 @@ electronFuses:
   onlyLoadAppFromAsar: true
   enableEmbeddedAsarIntegrityValidation: true # enforced on macOS/Windows; no-op on Linux
   grantFileProtocolExtraPrivileges: false
-# @todo: wire macOS notarization + Windows EV signing in CI.
+# @todo: wire macOS notarization in CI.
 mac:
   category: public.app-category.developer-tools
   # Two plists on purpose: the inherit one carries the grants the frozen
